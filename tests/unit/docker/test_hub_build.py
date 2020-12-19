@@ -1,14 +1,20 @@
 from pathlib import Path
 
 import pytest
+import os
 
 from jina.docker.hubio import HubIO
 from jina.excepts import ImageAlreadyExists
 from jina.helper import yaml
+from jina.docker.helper import credentials_file
 from jina.parser import set_hub_build_parser, set_hub_list_parser, set_hub_pushpull_parser
 
 cur_dir = Path(__file__).parent
 
+@pytest.fixture
+def access_token_github():
+    token = os.environ['GITHUB_TOKEN']
+    return {'access_token': token}
 
 @pytest.mark.timeout(360)
 def test_hub_build_pull():
@@ -38,7 +44,8 @@ def test_hub_build_uses():
     HubIO(args).build()
 
 
-def test_hub_build_push():
+def test_hub_build_push(monkeypatch, access_token_github):
+
     args = set_hub_build_parser().parse_args([str(cur_dir / 'hub-mwu'), '--push', '--host-info'])
     summary = HubIO(args).build()
 
@@ -59,6 +66,7 @@ def test_hub_build_push():
         '--keywords', summary['manifest_info']['keywords'][0],
         '--type', summary['manifest_info']['type']
     ])
+    monkeypatch.setattr(yaml, 'load', access_token_github)
     response = HubIO(args).list()
     manifests = response
 
@@ -67,7 +75,7 @@ def test_hub_build_push():
 
 
 @pytest.mark.skip(reason='Non reproducible error and super flaky in github. Please repair it.')
-def test_hub_build_push_push_again():
+def test_hub_build_push_push_again(monkeypatch, access_token_github):
     args = set_hub_build_parser().parse_args([str(cur_dir / 'hub-mwu'), '--push', '--host-info'])
     summary = HubIO(args).build()
 
@@ -88,6 +96,7 @@ def test_hub_build_push_push_again():
         '--keywords', summary['manifest_info']['keywords'][0],
         '--type', summary['manifest_info']['type']
     ])
+    monkeypatch.setattr(yaml, 'load', access_token_github)
     response = HubIO(args).list()
     manifests = response
 
